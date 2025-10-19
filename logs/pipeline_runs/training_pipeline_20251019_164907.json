@@ -1,0 +1,138 @@
+{
+  "pipeline_start": "2025-10-19T16:49:04.214161",
+  "config": {
+    "hardware": {
+      "gpu_memory_gb": 48,
+      "system_memory_gb": 100,
+      "num_gpus": 1,
+      "device": "cuda",
+      "use_flash_attention": true
+    },
+    "model": {
+      "base_model": "Qwen/Qwen2.5-7B-Instruct",
+      "model_type": "causal_lm",
+      "torch_dtype": "bfloat16",
+      "attn_implementation": "flash_attention_2",
+      "trust_remote_code": true,
+      "use_lora": true,
+      "lora_r": 128,
+      "lora_alpha": 256,
+      "lora_dropout": 0.05,
+      "lora_target_modules": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj"
+      ],
+      "use_4bit": true,
+      "bnb_4bit_compute_dtype": "bfloat16",
+      "bnb_4bit_quant_type": "nf4",
+      "bnb_4bit_use_double_quant": true
+    },
+    "training": {
+      "num_train_samples": 8000,
+      "train_split": 0.9,
+      "max_seq_length": 4096,
+      "num_train_epochs": 3,
+      "per_device_train_batch_size": 4,
+      "per_device_eval_batch_size": 4,
+      "gradient_accumulation_steps": 8,
+      "learning_rate": 0.0002,
+      "weight_decay": 0.01,
+      "max_grad_norm": 1.0,
+      "lr_scheduler_type": "cosine",
+      "warmup_ratio": 0.03,
+      "optim": "paged_adamw_8bit",
+      "gradient_checkpointing": true,
+      "gradient_checkpointing_kwargs": {
+        "use_reentrant": false
+      },
+      "logging_steps": 50,
+      "eval_steps": 500,
+      "save_steps": 500,
+      "save_total_limit": 3,
+      "load_best_model_at_end": true,
+      "metric_for_best_model": "eval_loss",
+      "greater_is_better": false,
+      "bf16": true,
+      "fp16": false,
+      "seed": 42
+    },
+    "evaluation": {
+      "eval_batch_size": 8,
+      "eval_sample_size": 100,
+      "min_json_validity": 0.85,
+      "min_mdx_syntax_validity": 0.9,
+      "min_overall_score": 0.85,
+      "eval_every_n_epochs": 1
+    },
+    "deployment": {
+      "api_host": "0.0.0.0",
+      "api_port": 8000,
+      "api_workers": 1,
+      "use_vllm": true,
+      "vllm_tensor_parallel_size": 1,
+      "vllm_gpu_memory_utilization": 0.9,
+      "max_concurrent_requests": 100,
+      "request_timeout": 60,
+      "inference_quantization": "8bit",
+      "enable_caching": true,
+      "cache_ttl_seconds": 3600,
+      "cache_max_size": 1000
+    },
+    "feedback": {
+      "collect_all_interactions": true,
+      "collect_errors_only": false,
+      "ask_feedback_probability": 0.1,
+      "feedback_db_path": "data/feedback/feedback.db",
+      "min_feedback_samples": 500,
+      "retraining_interval_days": 14,
+      "min_feedback_quality_score": 0.7
+    },
+    "monitoring": {
+      "enable_prometheus": true,
+      "prometheus_port": 9090,
+      "enable_logging": true,
+      "log_level": "INFO",
+      "log_file": "logs/app.log",
+      "track_latency": true,
+      "track_token_usage": true,
+      "track_error_rate": true,
+      "alert_on_high_latency": true,
+      "latency_threshold_seconds": 5.0,
+      "alert_on_error_rate": true,
+      "error_rate_threshold": 0.05
+    },
+    "pipeline": {
+      "enable_auto_retraining": true,
+      "retraining_schedule_cron": "0 2 * * 0",
+      "run_data_generation": true,
+      "run_training": true,
+      "run_evaluation": true,
+      "run_deployment": true,
+      "enable_auto_rollback": true,
+      "rollback_on_performance_drop": true,
+      "max_performance_drop_percent": 10.0,
+      "notify_on_completion": true,
+      "notify_on_failure": true,
+      "notification_email": null,
+      "notification_webhook": null
+    }
+  },
+  "steps": {
+    "data_generation": {
+      "status": "success",
+      "total_examples": 8000,
+      "output_dir": "D:\\Nasirian\\projects\\FineTuneLLM\\data\\processed"
+    },
+    "data_loading": {
+      "train_samples": 7200,
+      "eval_samples": 800
+    }
+  },
+  "status": "FAILED",
+  "error": "Using `bitsandbytes` 8-bit quantization requires Accelerate: `pip install accelerate` and the latest version of bitsandbytes: `pip install -i https://pypi.org/simple/ bitsandbytes`"
+}

@@ -1,0 +1,16 @@
+{
+  "version": "v_20251019_161721",
+  "model_path": "model_registry\\models\\v_20251019_161721",
+  "registration_time": "2025-10-19T16:17:21.327298",
+  "metrics": {
+    "accuracy": 0.95,
+    "loss": 0.12
+  },
+  "config": {
+    "model_name": "example-model",
+    "epochs": 3
+  },
+  "training_results": {
+    "final_loss": 0.12
+  }
+}

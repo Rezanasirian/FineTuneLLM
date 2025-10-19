@@ -1,0 +1,14 @@
+{
+  "models": {
+    "v_20251019_161721": {
+      "metadata_file": "model_registry\\metadata\\v_20251019_161721.json",
+      "model_path": "model_registry\\models\\v_20251019_161721",
+      "registration_time": "2025-10-19T16:17:21.327298"
+    },
+    "v_20251019_162515": {
+      "metadata_file": "model_registry\\metadata\\v_20251019_162515.json",
+      "model_path": "model_registry\\models\\v_20251019_162515",
+      "registration_time": "2025-10-19T16:25:15.682821"
+    }
+  }
+}
