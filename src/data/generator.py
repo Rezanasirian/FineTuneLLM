@@ -196,24 +196,24 @@ class SyntheticDataGenerator:
             # Output MDX
             if breakdown == "none":
                 mdx = f"""SELECT
-  {measure} ON COLUMNS
-FROM [ActualCPMDataCube]
-WHERE (
-  [DimDate].[FiscalYear].&[{year}],
-  [DimLevel].[DimLevelSK].&[{org_id}],
-  [DimStandardAccount].[{acc_level}].&[{acc_id}]
-)"""
+                              {measure} ON COLUMNS
+                            FROM [ActualCPMDataCube]
+                            WHERE (
+                              [DimDate].[FiscalYear].&[{year}],
+                              [DimLevel].[DimLevelSK].&[{org_id}],
+                              [DimStandardAccount].[{acc_level}].&[{acc_id}]
+                            )"""
             else:
                 breakdown_level = {"month": "FiscalMonth", "quarter": "FiscalQuarter"}[breakdown]
                 mdx = f"""SELECT
-  {measure} ON COLUMNS,
-  [DimDate].[Calendar1FiscalFullDateHierarchy].[{breakdown_level}].Members ON ROWS
-FROM [ActualCPMDataCube]
-WHERE (
-  [DimStandardAccount].[{acc_level}].&[{acc_id}],
-  [DimLevel].[DimLevelSK].&[{org_id}],
-  [DimDate].[FiscalYear].&[{year}]
-)"""
+                      {measure} ON COLUMNS,
+                      [DimDate].[Calendar1FiscalFullDateHierarchy].[{breakdown_level}].Members ON ROWS
+                    FROM [ActualCPMDataCube]
+                    WHERE (
+                      [DimStandardAccount].[{acc_level}].&[{acc_id}],
+                      [DimLevel].[DimLevelSK].&[{org_id}],
+                      [DimDate].[FiscalYear].&[{year}]
+                    )"""
 
             output = {"mdx_query": mdx}
 
@@ -297,24 +297,24 @@ Query Results: {json.dumps(results, ensure_ascii=False)}"""
             # Missing period before &
             (
                 """SELECT [Measures].[FactFinancail DebitBalance] ON COLUMNS
-FROM [ActualCPMDataCube]
-WHERE ([DimLevel].[DimLevelSK]&[34])""",
-                """SELECT [Measures].[FactFinancail DebitBalance] ON COLUMNS
-FROM [ActualCPMDataCube]
-WHERE ([DimLevel].[DimLevelSK].&[34])"""
+                    FROM [ActualCPMDataCube]
+                    WHERE ([DimLevel].[DimLevelSK]&[34])""",
+                                    """SELECT [Measures].[FactFinancail DebitBalance] ON COLUMNS
+                    FROM [ActualCPMDataCube]
+                    WHERE ([DimLevel].[DimLevelSK].&[34])"""
             ),
             # Missing dimension
             (
                 """SELECT [Measures].[FactFinancail DebitBalance] ON COLUMNS
-FROM [ActualCPMDataCube]
-WHERE ([DimDate].[FiscalYear].&[1403])""",
-                """SELECT [Measures].[FactFinancail DebitBalance] ON COLUMNS
-FROM [ActualCPMDataCube]
-WHERE (
-  [DimDate].[FiscalYear].&[1403],
-  [DimLevel].[DimLevelSK].&[34],
-  [DimStandardAccount].[DimStandardLedgerAccountSK].&[1]
-)"""
+                    FROM [ActualCPMDataCube]
+                    WHERE ([DimDate].[FiscalYear].&[1403])""",
+                                    """SELECT [Measures].[FactFinancail DebitBalance] ON COLUMNS
+                    FROM [ActualCPMDataCube]
+                    WHERE (
+                      [DimDate].[FiscalYear].&[1403],
+                      [DimLevel].[DimLevelSK].&[34],
+                      [DimStandardAccount].[DimStandardLedgerAccountSK].&[1]
+                    )"""
             ),
         ]
 

@@ -39,7 +39,7 @@ class LoggerSetup:
         name: str,
         log_file: Optional[str] = None,
         level: str = "INFO",
-        log_dir: str = "logs",
+        log_dir: str = "/../../app_log",
         console_output: bool = True,
         file_output: bool = True,
         max_bytes: int = 10 * 1024 * 1024,  # 10MB
@@ -92,6 +92,7 @@ class LoggerSetup:
         if file_output:
             # Create log directory
             log_path = Path(log_dir)
+            print(f"log path {log_path}")
             log_path.mkdir(parents=True, exist_ok=True)
 
             # Log file path

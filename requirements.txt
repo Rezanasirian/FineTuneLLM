@@ -1,10 +1,10 @@
 # Core ML libraries
-torch==2.1.2
+torch==2.9.0
 transformers==4.38.2
 datasets==2.16.1
 peft==0.8.2
 bitsandbytes==0.42.0
-accelerate==0.27.2
+accelerate==1.10.1
 trl==0.7.11
 
 # API & Web
@@ -15,7 +15,7 @@ python-multipart==0.0.6
 
 # Data processing
 pandas==2.1.4
-numpy==1.26.3
+numpy~=2.3.4
 scipy==1.11.4
 
 # Monitoring
@@ -27,7 +27,12 @@ pyyaml==6.0.1
 python-dotenv==1.0.0
 requests==2.31.0
 rouge-score==0.1.2
-accelerate==1.10.1
+
 # Optional production dependencies
 # vllm==0.3.3  # Uncomment for production
 # flash-attn==2.5.0 --no-build-isolation  # Uncomment for faster training
+scikit-learn~=1.7.2
+nltk~=3.9.2
+spacy~=3.8.7
+tqdm~=4.67.1
+rouge_score~=0.1.2

@@ -3,19 +3,31 @@ Model Registry for managing trained models and their metadata
 """
 import json
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 import shutil
+from dataclasses import dataclass
 
 from src.core.logger import get_logger
+from src.services.feedback_database import FeedbackDatabase, FeedbackStats
 
 logger = get_logger("model_registry")
+
+
+@dataclass
+class ModelVersion:
+    """Data class for model version information."""
+    version: str
+    model_path: str
+    created_at: str
+    status: str = "active"
+    metrics: Dict[str, Any] = None
 
 
 class ModelRegistry:
     """Manages registration, versioning, and retrieval of trained models."""
 
-    def __init__(self, registry_dir: Path ):
+    def __init__(self, registry_dir: Path):
         """
         Initialize the model registry.
 
@@ -25,8 +37,8 @@ class ModelRegistry:
         self.registry_dir = Path(registry_dir)
         self.models_dir = self.registry_dir / "models"
         self.metadata_dir = self.registry_dir / "metadata"
+        self.feedback_db = FeedbackDatabase()  # Initialize feedback database
         self._initialize_registry()
-        # logger = logger
         logger.info("Model registry initialized")
 
     def _initialize_registry(self):
@@ -103,7 +115,8 @@ class ModelRegistry:
                 "registration_time": datetime.now().isoformat(),
                 "metrics": metrics,
                 "config": config,
-                "training_results": training_results
+                "training_results": training_results,
+                "status": "active"
             }
 
             # Save metadata
@@ -118,7 +131,8 @@ class ModelRegistry:
                 registry_data["models"][version] = {
                     "metadata_file": str(metadata_file),
                     "model_path": str(versioned_model_dir),
-                    "registration_time": metadata["registration_time"]
+                    "registration_time": metadata["registration_time"],
+                    "status": "active"
                 }
                 f.seek(0)
                 json.dump(registry_data, f, indent=2, ensure_ascii=False)
@@ -162,6 +176,16 @@ class ModelRegistry:
             registry_data = json.load(f)
         logger.info("Listed all registered models")
         return registry_data["models"]
+
+    def list_versions(self) -> List[str]:
+        """
+        List all model versions.
+
+        Returns:
+            List[str]: List of all version strings.
+        """
+        models = self.list_models()
+        return list(models.keys())
 
     def delete_model(self, version: str) -> bool:
         """
@@ -226,27 +250,213 @@ class ModelRegistry:
         )[0]
         return self.get_model_info(latest_version)
 
+    def get_latest_version(self) -> Optional[ModelVersion]:
+        """
+        Get the latest ACTIVE model version as a ModelVersion object.
 
-# if __name__ == "__main__":
-#     # Example usage
-#     registry = ModelRegistry(registry_dir=Path("../../model_registry"))
-#
-#     # Example model registration
-#     model_path = "D:/Nasirian/projects/FineTuneLLM/model"
-#     metrics = {"accuracy": 0.95, "loss": 0.12}
-#     config = {"model_name": "example-model", "epochs": 3}
-#     training_results = {"final_loss": 0.12}
-#
-#     version = registry.register_model(model_path, metrics, config, training_results)
-#     print(f"Registered model version: {version}")
-#
-#     # List all models
-#     print("All models:", registry.list_models())
-#
-#     # Get latest model
-#     latest_model = registry.get_latest_model()
-#     print("Latest model:", latest_model)
-#
-#     # Get specific model info
-#     model_info = registry.get_model_info(version)
-#     print(f"Model {version} info:", model_info)
+        Returns:
+            Optional[ModelVersion]: Latest active model version, None if no active models exist.
+        """
+        models = self.list_models()
+        if not models:
+            logger.warning("No models found in registry")
+            return None
+
+        # Filter active models and sort by registration time
+        active_models = {
+            version: info for version, info in models.items()
+            if info.get("status", "active") == "active"
+        }
+
+        if not active_models:
+            logger.warning("No active models found in registry")
+            return None
+
+        # Get the most recent active model
+        latest_version_str = max(
+            active_models.items(),
+            key=lambda x: x[1]["registration_time"]
+        )[0]
+
+        # Get full metadata
+        metadata = self.get_model_info(latest_version_str)
+        if not metadata:
+            return None
+
+        # Create ModelVersion object
+        model_version = ModelVersion(
+            version=metadata["version"],
+            model_path=metadata["model_path"],
+            created_at=metadata["registration_time"],
+            status=metadata.get("status", "active"),
+            metrics=metadata.get("metrics", {})
+        )
+
+        logger.info(f"Retrieved latest version: {model_version.version}")
+        return model_version
+
+    def set_active_version(self, version: str) -> bool:
+        """
+        Set a specific version as the active version.
+
+        Args:
+            version (str): Version to set as active.
+
+        Returns:
+            bool: True if successful, False otherwise.
+        """
+        try:
+            # Get all models
+            models = self.list_models()
+            if version not in models:
+                logger.error(f"Version {version} not found")
+                return False
+
+            # Deactivate all other versions
+            for v in models:
+                if v != version:
+                    metadata_file = self.metadata_dir / f"{v}.json"
+                    if metadata_file.exists():
+                        with open(metadata_file, "r") as f:
+                            metadata = json.load(f)
+                        metadata["status"] = "inactive"
+                        with open(metadata_file, "w") as f:
+                            json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+                        # Update registry entry
+                        models[v]["status"] = "inactive"
+
+            # Activate target version
+            metadata_file = self.metadata_dir / f"{version}.json"
+            if metadata_file.exists():
+                with open(metadata_file, "r") as f:
+                    metadata = json.load(f)
+                metadata["status"] = "active"
+                with open(metadata_file, "w") as f:
+                    json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+                models[version]["status"] = "active"
+
+            # Save updated registry
+            with open(self.registry_file, "w") as f:
+                json.dump({"models": models}, f, indent=2, ensure_ascii=False)
+
+            logger.info(f"Set version {version} as active")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to set active version {version}: {e}", exc_info=True)
+            return False
+
+    def create_backup(self, version: str) -> str:
+        """
+        Create a backup of a specific model version.
+
+        Args:
+            version (str): Version to backup.
+
+        Returns:
+            str: Path to backup directory.
+        """
+        try:
+            metadata = self.get_model_info(version)
+            if not metadata:
+                raise ValueError(f"Version {version} not found")
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_dir = self.registry_dir / f"backups" / f"{version}_{timestamp}"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+
+            # Copy model files
+            model_path = Path(metadata["model_path"])
+            shutil.copytree(model_path, backup_dir / "model", dirs_exist_ok=True)
+
+            # Copy metadata
+            metadata_backup = metadata.copy()
+            metadata_backup["backup_time"] = datetime.now().isoformat()
+            with open(backup_dir / "metadata.json", "w") as f:
+                json.dump(metadata_backup, f, indent=2, ensure_ascii=False)
+
+            logger.info(f"Created backup of {version} at {backup_dir}")
+            return str(backup_dir)
+
+        except Exception as e:
+            logger.error(f"Failed to create backup of {version}: {e}", exc_info=True)
+            return ""
+
+    def update_model_feedback(self, version: str, feedback_stats: FeedbackStats):
+        """
+        Update model metrics with feedback data.
+
+        Args:
+            version (str): Model version to update.
+            feedback_stats (FeedbackStats): Feedback statistics.
+        """
+        metadata = self.get_model_info(version)
+        if metadata:
+            # Update metrics with feedback data
+            if "metrics" not in metadata:
+                metadata["metrics"] = {}
+
+            metadata["metrics"].update({
+                'feedback_count': feedback_stats.total_feedback,
+                'avg_rating': feedback_stats.average_rating,
+                'error_rate': feedback_stats.error_rate,
+                'satisfaction_trend': feedback_stats.satisfaction_trend,
+                'top_error_types': {k: v for k, v in feedback_stats.top_error_types},
+                'last_feedback_update': datetime.now().isoformat()
+            })
+
+            # Calculate overall score
+            overall_score = round(
+                (feedback_stats.average_rating / 5.0 * 40) +
+                ((100 - feedback_stats.error_rate) / 100 * 40) +
+                (feedback_stats.satisfaction_trend / 10 * 20),  # Normalized
+                1
+            )
+            metadata["metrics"]["overall_score"] = overall_score
+
+            # Save updated metadata
+            metadata_file = self.metadata_dir / f"{version}.json"
+            with open(metadata_file, "w") as f:
+                json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+            logger.info(f"Updated feedback metrics for {version}: {overall_score}%")
+        else:
+            logger.warning(f"Cannot update feedback for unknown version {version}")
+
+    def get_model_performance_trend(self, days: int = 30) -> Dict[str, Any]:
+        """
+        Get performance trend across model versions.
+
+        Args:
+            days (int): Days of feedback to analyze.
+
+        Returns:
+            Dict[str, Any]: Performance trend data.
+        """
+        versions = self.list_versions()
+        trend_data = {}
+
+        for version in sorted(versions, key=lambda v: v, reverse=True)[:10]:
+            model_info = self.get_model_info(version)
+            if not model_info:
+                continue
+
+            # Get feedback for this version
+            feedback = self.feedback_db.get_feedback_by_version(version, limit=1000)
+
+            if feedback:
+                avg_rating = sum(f.rating or 0 for f in feedback if f.rating) / len([f for f in feedback if f.rating])
+                error_rate = len([f for f in feedback if f.is_error]) / len(feedback) * 100
+
+                trend_data[version] = {
+                    'avg_rating': round(avg_rating, 2),
+                    'error_rate': round(error_rate, 2),
+                    'feedback_count': len(feedback),
+                    'deployed_at': model_info['registration_time'],
+                    'overall_score': model_info['metrics'].get('overall_score', 0)
+                }
+
+        logger.info(f"Generated performance trend for {len(trend_data)} versions")
+        return trend_data
